@@ -1,9 +1,15 @@
-const VERSION = "creatix-movies-v1.3.0-static";
+const VERSION = "creatix-movies-v1.3.0-cr3atix-red-1";
 const APP_BASE = new URL("./", self.location.href).pathname;
 const CACHE_PREFIX = `creatix-movies:${APP_BASE}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const appPath = (path = "") => new URL(path, self.registration.scope).pathname;
-const APP_SHELL = [APP_BASE, appPath("manifest.webmanifest"), appPath("icons/icon.svg"), appPath("icons/icon-192.png"), appPath("icons/icon-512.png"), appPath("data/seed-catalog.json")];
+const APP_SHELL = [
+  APP_BASE,
+  appPath("manifest.webmanifest"),
+  ...["icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "favicon-32.png"]
+    .map((name) => `${appPath(`icons/${name}`)}?v=cr3atix-red-1`),
+  appPath("data/seed-catalog.json"),
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

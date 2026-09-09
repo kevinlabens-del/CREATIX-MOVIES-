@@ -20,6 +20,7 @@ const CATALOG_REQUEST_TIMEOUT_MS = 30_000;
 const CATALOG_RECOVERY_DELAY_MS = 8_000;
 const APP_BASE_URL = new URL("./", document.baseURI).pathname;
 const appUrl = (path = "") => new URL(path.replace(/^\/+/, ""), document.baseURI).href;
+const APP_ICON_URL = appUrl("icons/icon.svg?v=cr3atix-red-1");
 // Cette distribution fonctionne directement sur un serveur statique/local et sur GitHub Pages.
 const STATIC_CATALOG = true;
 const CATALOG_URL = appUrl("data/catalog.json");
@@ -53,7 +54,7 @@ document.querySelector("#app").innerHTML = `
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-lockup" aria-label="CR3@TIX MOVIES">
-        <img class="brand-mark" src="${appUrl("icons/icon.svg")}" alt="" width="48" height="48">
+        <img class="brand-mark" src="${APP_ICON_URL}" alt="" width="48" height="48">
         <div>
           <p class="eyebrow">CR3@TIX</p>
           <h1><span>MOVIES</span></h1>
@@ -84,7 +85,7 @@ document.querySelector("#app").innerHTML = `
           <div class="player-frame">
             <div id="video-player" class="video-player" aria-live="polite">
               <div class="player-placeholder">
-                <img src="${appUrl("icons/icon.svg")}" alt="" width="88" height="88">
+                <img src="${APP_ICON_URL}" alt="" width="88" height="88">
                 <p>Préparation du lecteur intégré…</p>
               </div>
             </div>
@@ -452,7 +453,7 @@ function createCard(video) {
   image.loading = "lazy";
   image.decoding = "async";
   image.addEventListener("error", () => {
-    image.src = appUrl("icons/icon.svg");
+    image.src = APP_ICON_URL;
     visual.classList.add("image-fallback");
   }, { once: true });
   const play = createTextElement("span", "card-play", "▶");
