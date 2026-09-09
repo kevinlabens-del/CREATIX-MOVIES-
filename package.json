@@ -1,0 +1,30 @@
+{
+  "name": "creatix-movies",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Films et documentaires complets en fran\u00e7ais avec lecteurs officiels int\u00e9gr\u00e9s.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "pages:catalog": "node scripts/prepare-pages-catalog.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm test && npm run typecheck && npm run build",
+    "catalog:archive": "node scripts/prepare-pages-catalog.mjs",
+    "catalog:refresh": "node scripts/prepare-pages-catalog.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.0.10",
+    "@netlify/functions": "^5.1.1",
+    "hls.js": "^1.6.13"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,0 +1,22 @@
+CR3@TIX MOVIES 1.3 — FILMS EN FRANÇAIS
+
+1. Décompresser tout le ZIP.
+2. Pour publier : envoyer le contenu du dossier dist sur un hébergement web HTTPS.
+3. Pour tester : ouvrir ce dossier dans un éditeur proposant un aperçu HTTP,
+   ou lancer npm ci puis npm run dev avec Node.js 24.
+4. Ouvrir l'adresse de l'application, choisir un film et lancer le lecteur.
+5. Sur téléphone, utiliser Installer / Ajouter à l'écran d'accueil.
+
+1 117 fiches de films et documentaires de 40 minutes ou plus sont fournies.
+Les lecteurs YouTube, Dailymotion et ONF fonctionnent à l'intérieur de l'interface.
+Le français repose sur les indications de l'éditeur. Selon la vidéo, sélectionner
+la piste française dans les commandes du lecteur. Certaines vidéos peuvent être
+indisponibles dans votre pays ou à une date ultérieure.
+
+Internet est nécessaire pour regarder les vidéos. Les films ne sont pas stockés
+localement dans ce ZIP. Ouvrir index.html par double-clic ne permet pas d'utiliser
+correctement les lecteurs ; passer par un aperçu HTTP ou un hébergement HTTPS.
+
+L'actualisation toutes les 6 heures nécessite le workflow GitHub Actions fourni.
+Le bouton Actualiser recharge simplement le dernier catalogue publié.
+Détails, sources, conditions et installation : README.md.

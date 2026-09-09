@@ -1,0 +1,56 @@
+{
+  "region": "FR",
+  "minimumDurationSeconds": 2400,
+  "youtubeChannels": [
+    {
+      "handle": "BoxOfficeFilmsCompletsFR",
+      "name": "Boxoffice · Films complets",
+      "id": "UCQltP9CZKGug5kTf6cppVgg"
+    },
+    {
+      "handle": "CinemaCinemas",
+      "name": "Cinéma Cinémas",
+      "id": "UCQIrvVPHrt2cN14ktGA2Snw"
+    },
+    {
+      "handle": "imineo",
+      "name": "imineo",
+      "id": "UC_majyzBb8HZV0wCmU4Z4Ag"
+    },
+    {
+      "handle": "BoxOfficeGrenier",
+      "name": "Boxoffice · Films TV",
+      "id": "UCyclbiz4hz9ZR5hQsJC__9A"
+    },
+    {
+      "handle": "BoxOfficeFAMILLE",
+      "name": "Boxoffice · Famille",
+      "id": "UC1GJOmIrsa-OmUt2yYHfAKQ"
+    },
+    {
+      "handle": "BoxOffice4K",
+      "name": "Boxoffice · 4K",
+      "id": "UCSE5n4XCVfHmerDydpRymjA"
+    },
+    {
+      "handle": "imineoDocumentaires",
+      "name": "imineo · Documentaires",
+      "documentaries": true,
+      "id": "UCJ9tHJbCa8ZoMbapfJLy0ZQ"
+    }
+  ],
+  "dailymotionOwners": [
+    {
+      "id": "imineo",
+      "name": "imineo",
+      "documentaries": true
+    }
+  ],
+  "archiveCollections": [
+    "feature_films",
+    "prelinger"
+  ],
+  "onf": true,
+  "wikimedia": true,
+  "archiveApprovedIdentifiers": []
+}

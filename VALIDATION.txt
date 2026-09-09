@@ -1,0 +1,26 @@
+CR3@TIX MOVIES 1.3.0 — validation du 9 septembre 2026
+
+Catalogue livré : 1 117 fiches de films et documentaires.
+Origine : métadonnées publiques des éditeurs YouTube, Dailymotion et ONF.
+Critères contrôlés : français indiqué, durée de 40 minutes à 6 heures,
+lecteur compatible, absence de restriction d'intégration connue dans les
+métadonnées consultées. Aucune vidéo n'a été visionnée intégralement.
+
+Vérifications réussies :
+- 35 tests Node couvrant catalogue, sélection, sources et cycle du lecteur.
+- Vérification TypeScript.
+- Compilation Vite en version de production.
+- Présence des ressources référencées par le HTML compilé.
+- Manifeste PWA situé à la racine du sous-dossier de l'application.
+- Catalogues principal et de secours présents, avec les mêmes 1 117 fiches.
+- Chaque fiche française fournit au moins un lecteur pris en charge.
+
+Vérifications non réalisées :
+- Parcours complet de l'interface dans un navigateur : l'environnement de
+  contrôle ne pouvait pas joindre le serveur d'aperçu local.
+- Lecture réelle des vidéos sur l'hébergement final, sur mobile et selon le pays.
+- Installation PWA sur un appareil réel.
+
+Le dossier dist est prêt à héberger. Aucun déploiement en ligne n'a été réalisé
+pendant cette mise à jour. Les modalités d'installation figurent dans LIRE-MOI.txt
+et README.md.

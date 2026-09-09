@@ -1,0 +1,76 @@
+name: Publication GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "15 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      refresh_catalog:
+        description: Actualiser les sources avant de publier
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - name: Restaurer le catalogue précédent
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            public/data/catalog.json
+            data/source-catalog.json
+          key: movies-fr-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: movies-fr-
+      - name: Préparer le catalogue statique
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: npm run pages:catalog
+      - name: Conserver le catalogue pour la prochaine collecte
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            public/data/catalog.json
+            data/source-catalog.json
+          key: movies-fr-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/configure-pages@v5
+      - name: Construire pour GitHub Pages
+        env:
+          VITE_BASE_PATH: "./"
+          VITE_STATIC_CATALOG: "true"
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publier sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
