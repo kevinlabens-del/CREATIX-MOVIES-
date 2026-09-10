@@ -45,6 +45,7 @@ jobs:
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          EUROPEANA_API_KEY: ${{ secrets.EUROPEANA_API_KEY }}
         run: npm run pages:catalog
       - name: Conserver le catalogue pour la prochaine collecte
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
