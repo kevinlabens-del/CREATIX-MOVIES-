@@ -6,6 +6,12 @@ export function onfEligible(row) {
     isFeature(row.title,Number(row.duration),{trustedFilmCatalog:true}) &&
     !/sans paroles|sans dialogue|silent film|no dialogue/i.test(row.description || "");
 }
+export function onfEpisodeEligible(row) {
+  return row?.category === "film" && row.availability?.is_public === true && row.geoblocked === false &&
+    !row.coming_soon && (row.part_of || []).some(p=>p.category==="series") &&
+    isFeature(row.title,Number(row.duration),{trustedFilmCatalog:true,allowEpisode:true}) &&
+    !/sans paroles|sans dialogue|silent film|no dialogue/i.test(row.description || "");
+}
 export function parseOnfPage(html,row,now=new Date()) {
   let metadata;
   for(const match of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -17,13 +23,17 @@ export function parseOnfPage(html,row,now=new Date()) {
   const image=Array.isArray(metadata.thumbnailUrl)?metadata.thumbnailUrl[0]:metadata.thumbnailUrl;
   const creators=(metadata.director||[]).map(x=>x.name).filter(Boolean).join(", ");
   const documentary=(row.genres||[]).some(g=>fold(typeof g==='object'?g.name:g).includes('documentaire'));
+  const seriesParent=(row.part_of||[]).find(p=>p.category==='series');
+  const isEpisode=Boolean(seriesParent);
+  const topics=topicsFor(`${row.title} ${(row.genres||[]).map(g=>typeof g==='object'?g.name:g).join(' ')}`,documentary);
+  if(isEpisode)topics.unshift('Série');
   return {
     id:`onf:${row.slug}`,source:"onf",videoId:row.slug,title:clean(row.title),channel:"Office national du film du Canada",
     description:clean(metadata.description||row.description).slice(0,420),thumbnail:image||"",
     durationSeconds:Number(row.duration),releaseYear:row.year||null,publishedAt:metadata.uploadDate||null,status:"replay",
+    contentType:isEpisode?"episode":"film",seriesTitle:isEpisode?clean(seriesParent?.title||seriesParent?.name||seriesParent?.label||""):null,
     language:"fr",languageLabel:"Français · ONF",languageEvidence:language?"publisher-audio":"publisher-language-filter",
-    topics:topicsFor(`${row.title} ${(row.genres||[]).map(g=>typeof g==='object'?g.name:g).join(' ')}`,documentary),
-    score:75,embeddable:true,sourceUrl:row.availability.resource_url,
+    topics:[...new Set(topics)],score:isEpisode?73:75,embeddable:true,sourceUrl:row.availability.resource_url,
     rights:"© ONF · incorporation personnelle et non commerciale",rightsUrl:"https://aide.onf.ca/conditions/",attribution:creators?`${creators} · © ONF`:"© ONF",
     lastCheckedAt:now.toISOString(),verification:"publisher-metadata",
     playbackSources:[{source:"onf",videoId:row.slug,playbackUrl:metadata.embedUrl,embeddable:true,label:"ONF · lecteur officiel"}]
@@ -34,7 +44,7 @@ export async function discoverFrenchOnf({existing=[],fetchImpl=fetch,now=new Dat
   try {
     for(let page=1;page<=30;page++) {
       const url=new URL("https://publicapi.nfb.ca/api/v5/works");
-      for(const [k,v]of Object.entries({locale:"fr",language:"fr",availability:"free",duration_min:"2400",include_series_episodes:"false",size:"100",page:String(page),include_fields:"slug,duration,year,thumbnail,directors,availability,geoblocked,cataloging_language,description,genres,part_of,coming_soon"}))url.searchParams.set(k,v);
+      for(const [k,v]of Object.entries({locale:"fr",language:"fr",availability:"free",duration_min:"480",include_series_episodes:"true",size:"100",page:String(page),include_fields:"slug,duration,year,thumbnail,directors,availability,geoblocked,cataloging_language,description,genres,part_of,coming_soon"}))url.searchParams.set(k,v);
       const payload=await request(url,{json:true,fetchImpl});
       if(!Array.isArray(payload.items))throw new Error("Format du catalogue ONF inattendu");
       rows.push(...payload.items);
@@ -43,7 +53,7 @@ export async function discoverFrenchOnf({existing=[],fetchImpl=fetch,now=new Dat
     const previous=new Map(existing.filter(v=>v.source==="onf").map(v=>[v.id,v]));
     await mapLimit(rows,3,async row=>{
       const id=`onf:${row.slug}`;seen.add(id);
-      if(!onfEligible(row)){removed.push(id);return;}
+      if(!onfEligible(row)&&!onfEpisodeEligible(row)){removed.push(id);return;}
       const old=previous.get(id);
       if(old?.lastCheckedAt&&now-new Date(old.lastCheckedAt)<86400000&&!process.env.RECHECK_ALL){videos.push(old);return;}
       try {
@@ -57,5 +67,6 @@ export async function discoverFrenchOnf({existing=[],fetchImpl=fetch,now=new Dat
   for(const old of existing.filter(v=>v.source==="onf"&&!seen.has(v.id))) {
     if(complete)removed.push(old.id);else videos.push({...old,stale:true});
   }
-  return {videos,removed,reports:[{id:"onf",provider:"onf",name:"Office national du film du Canada",status:failed?(videos.length?"partial":"unavailable"):"ok",count:videos.length,discovered:rows.length,...(!failed?{lastSuccessAt:now.toISOString()}:{})}]};
+  const episodeCount=videos.filter(v=>v.contentType==='episode').length;
+  return {videos,removed,reports:[{id:"onf",provider:"onf",name:"Office national du film du Canada",status:failed?(videos.length?"partial":"unavailable"):"ok",count:videos.length,episodes:episodeCount,discovered:rows.length,...(!failed?{lastSuccessAt:now.toISOString()}:{})}]};
 }
