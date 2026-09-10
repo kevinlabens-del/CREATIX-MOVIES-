@@ -15,8 +15,8 @@
   ],
   "archiveCollections": ["feature_films","prelinger","opensource_movies"],
   "archiveAutoDiscovery": true,
-  "archiveSearchRows": 250,
-  "archiveSearchPages": 8,
+  "archiveSearchRows": 100,
+  "archiveSearchPages": 2,
   "archiveApprovedIdentifiers": [],
   "onf": true,
   "wikimedia": true,
@@ -26,11 +26,12 @@
     "French-language documentary films",
     "French-language animated films"
   ],
-  "wikimediaPagesPerCategory": 40,
-  "wikimediaCategoryDepth": 2,
-  "wikimediaMaxCategories": 160,
+  "wikimediaPagesPerCategory": 5,
+  "wikimediaCategoryDepth": 1,
+  "wikimediaMaxCategories": 30,
   "gallica": true,
-  "gallicaSearchPages": 30,
+  "gallicaSearchPages": 3,
   "europeana": true,
+  "europeanaSearchPages": 5,
   "customJsonFeeds": []
 }
