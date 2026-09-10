@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#070913" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://archive.org https://geo.dailymotion.com https://www.dailymotion.com https://www.onf.ca; media-src 'self' https: blob:; connect-src 'self' https:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; object-src 'none'" />
+  <link rel="stylesheet" href="./src/settings.css" />
+  <title>CR3@TIX MOVIES · Paramètres</title>
+</head>
+<body>
+  <main class="settings-shell">
+    <header>
+      <div><p class="eyebrow">CR3@TIX MOVIES</p><h1>Paramètres</h1><p>Ajouts manuels protégés par un code local.</p></div>
+      <a class="back" href="./">← Retour</a>
+    </header>
+
+    <section id="lock-card" class="card">
+      <h2 id="lock-title">Accès protégé</h2>
+      <p id="lock-help"></p>
+      <form id="lock-form">
+        <input id="password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Code d’accès" required />
+        <button type="submit">Déverrouiller</button>
+      </form>
+      <p class="hint">Le code reste uniquement sur cet appareil. Il n’est jamais envoyé à GitHub.</p>
+    </section>
+
+    <section id="admin" hidden>
+      <div class="card">
+        <h2>Ajouter un film ou un épisode</h2>
+        <form id="source-form" class="source-form">
+          <label>Titre<input id="title" required /></label>
+          <label>Type<select id="content-type"><option value="film">Film</option><option value="episode">Épisode de série</option></select></label>
+          <label>URL de lecture<input id="url" type="url" placeholder="https://…" required /></label>
+          <label>Genre<input id="genre" placeholder="Action, Drame, Documentaire…" /></label>
+          <label>Durée en minutes<input id="duration" type="number" min="1" value="45" required /></label>
+          <div id="series-fields" class="series-fields" hidden>
+            <label>Nom de la série<input id="series-title" /></label>
+            <label>Saison<input id="season" type="number" min="1" value="1" /></label>
+            <label>Épisode<input id="episode" type="number" min="1" value="1" /></label>
+          </div>
+          <button type="submit">＋ Ajouter au catalogue local</button>
+        </form>
+        <p id="message" class="message"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Mes ajouts</h2><button id="lock-now" class="secondary" type="button">Verrouiller</button></div>
+        <div id="manual-list"></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./src/settings.js"></script>
+</body>
+</html>
