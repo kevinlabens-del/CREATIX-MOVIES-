@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {config,mergeMovies} from './catalog-utils.mjs';
 import {discoverFrenchYouTube} from './youtube-french.mjs';
 import {discoverFrenchDailymotion} from './dailymotion-french.mjs';
+import {discoverFrenchDailymotionSeries} from './dailymotion-series.mjs';
 import {discoverFrenchOnf} from './onf-french.mjs';
 import {discoverFrenchArchive as discoverArchiveCatalog} from './archive-french.mjs';
 import {discoverFrenchCommons} from './wikimedia-french.mjs';
@@ -23,6 +24,7 @@ const hasCustomFeeds=Array.isArray(config.customJsonFeeds)&&config.customJsonFee
 const jobs=[
   ['youtube',discoverFrenchYouTube],
   ['dailymotion',discoverFrenchDailymotion],
+  ['dailymotion-series',discoverFrenchDailymotionSeries],
   ...(config.onf?[['onf',discoverFrenchOnf]]:[]),
   ['archive',discoverArchiveCatalog],
   ...(config.wikimedia?[['wikimedia',discoverFrenchCommons]]:[]),
@@ -39,7 +41,8 @@ const results=await Promise.allSettled(jobs.map(async([name,run])=>{
   } else {
     result=await withTimeout(run({existing:sourceState.videos,now}),sourceTimeoutMs,name);
   }
-  console.log(`${name}: ${result.videos.length} films français retenus`);
+  const episodeCount=result.videos.filter(v=>v.contentType==='episode').length;
+  console.log(`${name}: ${result.videos.length} contenus français retenus · ${episodeCount} épisodes`);
   return result;
 }));
 const reports=[],movies=[],removed=new Set();
@@ -59,15 +62,18 @@ for(const movie of movies) {
 }
 const approvedMovies=movies.filter(v=>v.source!=="archive"||config.archiveAutoDiscovery||config.archiveApprovedIdentifiers.includes(v.identifier));
 const videos=mergeMovies(approvedMovies.filter(v=>!removed.has(v.id)&&v.playbackSources?.length)).sort((a,b)=>(b.score||0)-(a.score||0)||String(b.publishedAt||'').localeCompare(String(a.publishedAt||'')));
-if(!videos.length)throw new Error('Aucun film français conservé : le dernier catalogue reste inchangé.');
+if(!videos.length)throw new Error('Aucun contenu français conservé : le dernier catalogue reste inchangé.');
 const active=reports.filter(r=>r.count>0).length;
-const payload={version:10,appVersion:'2.1.1-collector',mode:'french-multisource-v2-max-bounded',generatedAt:now.toISOString(),lastAttemptAt:now.toISOString(),videos,sources:reports,
-  notice:`${videos.length} films complets en français · ${active} catalogues contributeurs.`,
-  selection:{language:'fr',minimumDurationSeconds:config.minimumDurationSeconds,region:'FR',verification:'Collecte multi-source bornée : une source lente ne bloque plus la publication ; les données valides précédentes sont conservées source par source.'}};
+const films=videos.filter(v=>v.contentType!=='episode').length;
+const episodes=videos.filter(v=>v.contentType==='episode').length;
+const series=new Set(videos.filter(v=>v.contentType==='episode').map(v=>v.seriesTitle).filter(Boolean)).size;
+const payload={version:11,appVersion:'2.2.0-series',mode:'french-multisource-movies-series',generatedAt:now.toISOString(),lastAttemptAt:now.toISOString(),videos,sources:reports,
+  notice:`${films} films · ${series} séries · ${episodes} épisodes en français · ${active} catalogues contributeurs.`,
+  selection:{language:'fr',minimumDurationSeconds:config.minimumDurationSeconds,episodeMinimumDurationSeconds:480,region:'FR',verification:'Collecte multi-source avec catalogue séries dédié ; seuls les lecteurs intégrables et les contenus en français sont conservés.'}};
 for(const path of ['public/data/catalog.json','data/catalog.json']) {
   const target=new URL(path,root);await mkdir(dirname(fileURLToPath(target)),{recursive:true});
   const temp=new URL(path+'.tmp',root);await writeFile(temp,JSON.stringify(payload,null,2)+'\n');await rename(temp,target);
 }
 await writeFile(new URL('data/source-catalog.json',root),JSON.stringify({videos:approvedMovies},null,2)+'\n');
-console.log(`Catalogue V2 MAX borné préparé : ${videos.length} films complets en français, doublons regroupés.`);
+console.log(`Catalogue préparé : ${films} films · ${series} séries · ${episodes} épisodes en français.`);
 process.exit(0);
