@@ -42,13 +42,13 @@ jobs:
           key: movies-fr-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: movies-fr-
       - name: Préparer le catalogue statique
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
+        if: github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           EUROPEANA_API_KEY: ${{ secrets.EUROPEANA_API_KEY }}
         run: npm run pages:catalog
       - name: Conserver le catalogue pour la prochaine collecte
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
+        if: github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_catalog)
         uses: actions/cache/save@v4
         with:
           path: |
