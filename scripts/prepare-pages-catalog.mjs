@@ -7,6 +7,8 @@ import {discoverFrenchDailymotion} from './dailymotion-french.mjs';
 import {discoverFrenchOnf} from './onf-french.mjs';
 import {discoverFrenchArchive as discoverArchiveCatalog} from './archive-french.mjs';
 import {discoverFrenchCommons} from './wikimedia-french.mjs';
+import {discoverFrenchGallica} from './gallica-french.mjs';
+import {discoverFrenchEuropeana} from './europeana-french.mjs';
 import {discoverCustomJsonFeeds} from './custom-json-feeds.mjs';
 
 const root=new URL('../',import.meta.url);
@@ -15,7 +17,16 @@ const previous=await readJson('public/data/catalog.json',await readJson('public/
 const sourceState=await readJson('data/source-catalog.json',previous);
 const now=new Date();
 const hasCustomFeeds=Array.isArray(config.customJsonFeeds)&&config.customJsonFeeds.some(source=>source?.enabled!==false);
-const jobs=[['youtube',discoverFrenchYouTube],['dailymotion',discoverFrenchDailymotion],...(config.onf?[['onf',discoverFrenchOnf]]:[]),['archive',discoverArchiveCatalog],...(config.wikimedia?[['wikimedia',discoverFrenchCommons]]:[]),...(hasCustomFeeds?[['custom',discoverCustomJsonFeeds]]:[])];
+const jobs=[
+  ['youtube',discoverFrenchYouTube],
+  ['dailymotion',discoverFrenchDailymotion],
+  ...(config.onf?[['onf',discoverFrenchOnf]]:[]),
+  ['archive',discoverArchiveCatalog],
+  ...(config.wikimedia?[['wikimedia',discoverFrenchCommons]]:[]),
+  ...(config.gallica?[['gallica',discoverFrenchGallica]]:[]),
+  ...(config.europeana?[['europeana',discoverFrenchEuropeana]]:[]),
+  ...(hasCustomFeeds?[['custom',discoverCustomJsonFeeds]]:[])
+];
 const results=await Promise.allSettled(jobs.map(async([name,run])=>{
   let result;
   if(process.env.CATALOG_CACHE_ONLY==='1') {
@@ -43,12 +54,12 @@ const approvedMovies=movies.filter(v=>v.source!=="archive"||config.archiveAutoDi
 const videos=mergeMovies(approvedMovies.filter(v=>!removed.has(v.id)&&v.playbackSources.length)).sort((a,b)=>(b.score||0)-(a.score||0)||String(b.publishedAt||'').localeCompare(String(a.publishedAt||'')));
 if(!videos.length)throw new Error('Aucun film français conservé : le dernier catalogue reste inchangé.');
 const active=reports.filter(r=>r.count>0).length;
-const payload={version:8,appVersion:'2.0.0-collector',mode:'french-multisource-v2',generatedAt:reports.some(r=>r.lastSuccessAt)?now.toISOString():(previous.generatedAt||null),lastAttemptAt:now.toISOString(),videos,sources:reports,
+const payload={version:9,appVersion:'2.1.0-collector',mode:'french-multisource-v2-max',generatedAt:reports.some(r=>r.lastSuccessAt)?now.toISOString():(previous.generatedAt||null),lastAttemptAt:now.toISOString(),videos,sources:reports,
   notice:`${videos.length} films complets en français · ${active} catalogues contributeurs.`,
-  selection:{language:'fr',minimumDurationSeconds:config.minimumDurationSeconds,region:'FR',verification:'V2 : collecte élargie, lecture intégrable, durée minimale, métadonnées françaises et droits compatibles vérifiés quand la source les expose.'}};
+  selection:{language:'fr',minimumDurationSeconds:config.minimumDurationSeconds,region:'FR',verification:'V2 MAX : collecte multi-source élargie, lecture intégrable, durée minimale, français et droits compatibles vérifiés selon les métadonnées disponibles.'}};
 for(const path of ['public/data/catalog.json','data/catalog.json']) {
   const target=new URL(path,root);await mkdir(dirname(fileURLToPath(target)),{recursive:true});
   const temp=new URL(path+'.tmp',root);await writeFile(temp,JSON.stringify(payload,null,2)+'\n');await rename(temp,target);
 }
 await writeFile(new URL('data/source-catalog.json',root),JSON.stringify({videos:approvedMovies},null,2)+'\n');
-console.log(`Catalogue V2 préparé : ${videos.length} films complets en français, doublons regroupés.`);
+console.log(`Catalogue V2 MAX préparé : ${videos.length} films complets en français, doublons regroupés.`);
