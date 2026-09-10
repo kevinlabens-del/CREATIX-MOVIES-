@@ -21,7 +21,6 @@ export function seconds(raw) {
 }
 export function frenchEvidence({ title = "", audioLanguage = "", language = "", audioTracks = [] } = {}) {
   const t = fold(title);
-  // A translated title, French subtitles, or a French channel name is not evidence of French audio.
   const frenchTrack = audioTracks.some((track) => /^fr(?:[-.]|$)/i.test(track.id || "") || /francais|french/i.test(fold(track.displayName || "")));
   if (frenchTrack) return { language: "fr", languageLabel: "Français · piste audio", evidence: "audio-track" };
   if (/^fr(?:[-_]|$)|^(?:fre|fra|french|francais)$/i.test(fold(audioLanguage || language))) return { language: "fr", languageLabel: "Français", evidence: "publisher-audio" };
@@ -29,11 +28,13 @@ export function frenchEvidence({ title = "", audioLanguage = "", language = "", 
   if (/\bvf\b|\bvff\b|version francaise|(?:en |in )francais|in french|film complet (?:fr\b|francais)/.test(t)) return { language: "fr", languageLabel: "VF annoncée", evidence: "publisher-title" };
   return null;
 }
-export function isFeature(title, duration, { documentary = false, trustedFilmCatalog = false } = {}) {
-  if (!Number.isFinite(duration) || duration < MIN_SECONDS || duration > 6 * 3600) return false;
+export function isFeature(title, duration, { documentary = false, trustedFilmCatalog = false, allowEpisode = false } = {}) {
+  if (!Number.isFinite(duration) || duration > 6 * 3600) return false;
   const t = fold(title).replace(/[–—]/g, "-");
   if (/\b(trailer|teaser|extraits?|bande[ -]annonce|preview|making[ -]of|interview|podcast|reaction|recap|compilation|marathon|shorts?|court[ -]metrage)\b/.test(t)) return false;
-  if (/\b(?:episode|saison|partie|part)\s*\d|\bS\d{1,2}E\d{1,2}\b|\b\d\s*\/\s*\d\b/i.test(t)) return false;
+  const episode = /\b(?:episode|saison|partie|part)\s*\d|\bS\d{1,2}E\d{1,2}\b|\b\d\s*\/\s*\d\b/i.test(t);
+  if (episode) return allowEpisode && duration >= 8 * 60;
+  if (duration < MIN_SECONDS) return false;
   return trustedFilmCatalog || /film complet|full (?:length )?(?:movie|film)|integral|long[ -]metrage|complete movie/.test(t) || (documentary && duration >= MIN_SECONDS);
 }
 export function topicsFor(value, documentary = false) {
@@ -43,7 +44,6 @@ export function topicsFor(value, documentary = false) {
   return [...new Set([...topics, "Français"])];
 }
 export function movieKey(video) {
-  // Only merge matching film titles, close durations and matching known release years.
   let title = fold(video.title).replace(/\([^)]*\)|\[[^\]]*\]/g, " ");
   title = title.replace(/(?:film complet|full movie|version francaise|en francais|\bvf\b|\bvff\b|\bhd\b|\b4k\b|\b1080p\b|\b720p\b)/g, " ").replace(/[|⎪].*$/, "").replace(/[^a-z0-9]+/g, " ").trim();
   return title.length >= 4 ? title : video.id;
@@ -51,7 +51,8 @@ export function movieKey(video) {
 export function mergeMovies(videos) {
   const result = [], byId = new Map(), byTitle = new Map();
   for (const video of videos) {
-    if (!video?.id || video.language !== "fr" || !isFeature(video.title, video.durationSeconds, {trustedFilmCatalog: true})) continue;
+    const allowEpisode = video?.contentType === "episode";
+    if (!video?.id || video.language !== "fr" || !isFeature(video.title, video.durationSeconds, {trustedFilmCatalog: true, allowEpisode})) continue;
     const credits = video.credits?.length ? video.credits : [{sourceUrl:video.sourceUrl,rights:video.rights,rightsUrl:video.rightsUrl,attribution:video.attribution}];
     const key = movieKey(video);
     const sameTitle = (byTitle.get(key) || []).find((other) => Math.abs(other.durationSeconds - video.durationSeconds) <= 90 && (!other.releaseYear || !video.releaseYear || other.releaseYear === video.releaseYear));
