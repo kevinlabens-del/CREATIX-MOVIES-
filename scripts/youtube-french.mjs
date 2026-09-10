@@ -1,4 +1,20 @@
-import {config, request, jsonAssignment, walkKeys, ytText, seconds, frenchEvidence, isFeature, clean, topicsFor, mapLimit} from "./catalog-utils.mjs";
+import {config, request, jsonAssignment, walkKeys, ytText, seconds, frenchEvidence, isFeature, clean, topicsFor, mapLimit, fold} from "./catalog-utils.mjs";
+
+function episodeMeta(title="") {
+  const raw=clean(title),t=fold(raw);
+  const sxe=raw.match(/\bS(\d{1,2})E(\d{1,3})\b/i);
+  const ep=raw.match(/(?:épisode|episode|ep\.?)\s*(\d{1,3})/i);
+  const season=raw.match(/(?:saison|season)\s*(\d{1,2})/i);
+  const isEpisode=Boolean(sxe||ep||/\b(?:episode|saison|season)\b/i.test(t));
+  if(!isEpisode)return null;
+  let seriesTitle=raw
+    .replace(/\s*[-–—|:]?\s*(?:saison|season)\s*\d{1,2}.*$/i,"")
+    .replace(/\s*[-–—|:]?\s*(?:épisode|episode|ep\.?)\s*\d{1,3}.*$/i,"")
+    .replace(/\s*[-–—|:]?\s*S\d{1,2}E\d{1,3}.*$/i,"")
+    .trim();
+  if(seriesTitle.length<2)seriesTitle="Série YouTube";
+  return {seriesTitle,seasonNumber:Number(sxe?.[1]||season?.[1]||1),episodeNumber:Number(sxe?.[2]||ep?.[1])||null};
+}
 
 export function extractChannelVideos(data) {
   const videos = new Map();
@@ -24,18 +40,21 @@ export function normalizeWatch(data, expectedChannel, now = new Date()) {
   if (micro?.hasYpcMetadata || (Array.isArray(micro?.availableCountries) && !micro.availableCountries.includes(config.region))) return null;
   const duration = Number(details.lengthSeconds);
   const title = clean(details.title);
-  if (!isFeature(title,duration,{documentary:expectedChannel.documentaries})) return null;
+  const episode=episodeMeta(title);
+  if (!isFeature(title,duration,{documentary:expectedChannel.documentaries,allowEpisode:Boolean(episode)})) return null;
   const audioTracks = (data.streamingData?.adaptiveFormats || []).map((f)=>f.audioTrack).filter(Boolean);
   const evidence = frenchEvidence({title,audioTracks});
   if (!evidence) return null;
+  const topics=topicsFor(title,expectedChannel.documentaries);if(episode)topics.unshift("Série");
   return {
     id:`youtube:${details.videoId}`,source:"youtube",videoId:details.videoId,title,
     channel:clean(details.author || expectedChannel.name), channelId:details.channelId,
     description:clean(details.shortDescription || "").replace(/https?:\/\/\S+/g,"").slice(0,420),
     thumbnail:`https://i.ytimg.com/vi/${details.videoId}/hqdefault.jpg`,
     publishedAt:micro?.publishDate || null, status:"replay", durationSeconds:duration,
+    contentType:episode?"episode":"film",...(episode||{}),
     language:evidence.language,languageLabel:evidence.languageLabel,languageEvidence:evidence.evidence,
-    topics:topicsFor(title,expectedChannel.documentaries),score:90,embeddable:true,
+    topics:[...new Set(topics)],score:episode?87:90,embeddable:true,
     sourceUrl:`https://www.youtube.com/watch?v=${details.videoId}`,
     rights:"Lecteur officiel YouTube · droits conservés par l’éditeur",
     lastCheckedAt:now.toISOString(),verification:"publisher-metadata",
@@ -52,8 +71,6 @@ async function api(path,params,key,fetchImpl) {
 export async function discoverFrenchYouTube({existing=[],fetchImpl=fetch,now=new Date(),apiKey=process.env.YOUTUBE_API_KEY}={}) {
   const reports=[],candidates=new Map(),channels=new Map(),removed=new Set();
   const previous = new Map(existing.filter(v=>v.source==="youtube").map(v=>[v.videoId,v]));
-  // Public publisher pages provide the latest 100 uploads without a key. The official API
-  // enables paginated back-catalog collection. Neither path extracts video stream URLs.
   for (const source of config.youtubeChannels) {
     try {
       let id, rows=[];
@@ -88,7 +105,8 @@ export async function discoverFrenchYouTube({existing=[],fetchImpl=fetch,now=new
       for (const row of rows) {
         if(!/^[\w-]{11}$/.test(row.id||""))continue;
         if(!frenchEvidence({title:row.title}))continue;
-        if(row.duration && !isFeature(row.title,row.duration,{documentary:source.documentaries}))continue;
+        const episode=episodeMeta(row.title);
+        if(row.duration && !isFeature(row.title,row.duration,{documentary:source.documentaries,allowEpisode:Boolean(episode)}))continue;
         candidates.set(row.id,{...row,channelId:id});
       }
       reports.push({id:`youtube:${source.handle}`,name:source.name,provider:"youtube",status:"ok",channelId:id,discovered:rows.length,method:apiKey?"api":"public-pages"});
@@ -97,8 +115,6 @@ export async function discoverFrenchYouTube({existing=[],fetchImpl=fetch,now=new
       if(error.status===429)break;
     }
   }
-  // Previously collected films are rechecked too; absence from the latest upload page
-  // alone never means a film was removed.
   for(const v of previous.values()) if(channels.has(v.channelId))candidates.set(v.videoId,{id:v.videoId,channelId:v.channelId});
   let rateLimited=false,failed=0,checked=0;
   const videos=(await mapLimit([...candidates.values()],3,async row=>{
@@ -120,8 +136,9 @@ export async function discoverFrenchYouTube({existing=[],fetchImpl=fetch,now=new
   for(const old of previous.values())if(!channels.has(old.channelId))videos.push({...old,stale:true});
   for(const report of reports) {
     report.count=videos.filter(v=>v.channelId===report.channelId).length;
+    report.episodes=videos.filter(v=>v.channelId===report.channelId&&v.contentType==="episode").length;
     if(failed&&report.status==="ok")report.status="partial";
     if(report.status==="ok")report.lastSuccessAt=now.toISOString();
   }
-  return {videos,reports,removed:[...removed],stats:{checked,failed,candidates:candidates.size}};
+  return {videos,reports,removed:[...removed],stats:{checked,failed,candidates:candidates.size,episodes:videos.filter(v=>v.contentType==="episode").length}};
 }
