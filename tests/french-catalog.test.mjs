@@ -64,12 +64,12 @@ test('ONF conserve un film en collection et exclut épisodes, contenus payants e
   assert.equal(parseOnfPage(html('www.onf.ca','EN'),onf(),date),null);
 });
 
-test('une étiquette domaine public sur Archive ne déclenche aucun import sans validation explicite',()=>{
+test('Archive V2 importe automatiquement uniquement les films explicitement domaine public ou CC0',()=>{
   const payload={metadata:{identifier:'film-valide',title:'Un voyage',collection:['feature_films'],language:'fr',licenseurl:'https://creativecommons.org/publicdomain/mark/1.0/'},files:[{name:'film.mp4',length:5400,size:'5000'}]};
-  assert.equal(normalizeArchive(payload,date),null);
-  assert.ok(normalizeArchive(payload,date,['film-valide']));
+  assert.ok(normalizeArchive(payload,date));
   assert.equal(archiveLicense({licenseurl:'https://creativecommons.org.evil.test/publicdomain/mark/1.0/'}),null);
   assert.equal(archiveLicense({rights:'Public domain'}),null);
+  assert.equal(normalizeArchive({...payload,metadata:{...payload.metadata,licenseurl:'https://creativecommons.org/licenses/by/4.0/'}},date),null);
 });
 
 test('les doublons conservent toutes les sources et tous les crédits, les remakes restent distincts',()=>{
