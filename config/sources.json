@@ -48,10 +48,20 @@
   ],
   "archiveCollections": [
     "feature_films",
-    "prelinger"
+    "prelinger",
+    "opensource_movies"
   ],
+  "archiveAutoDiscovery": true,
+  "archiveSearchRows": 250,
+  "archiveSearchPages": 8,
+  "archiveApprovedIdentifiers": [],
   "onf": true,
   "wikimedia": true,
-  "archiveApprovedIdentifiers": [],
+  "wikimediaCategories": [
+    "French-language films",
+    "Films in French",
+    "French-language documentary films"
+  ],
+  "wikimediaPagesPerCategory": 40,
   "customJsonFeeds": []
 }
