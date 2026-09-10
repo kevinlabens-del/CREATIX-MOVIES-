@@ -52,5 +52,6 @@
   ],
   "onf": true,
   "wikimedia": true,
-  "archiveApprovedIdentifiers": []
+  "archiveApprovedIdentifiers": [],
+  "customJsonFeeds": []
 }
