@@ -2,16 +2,22 @@ import {config,request,asText,clean,seconds,isFeature,frenchEvidence,topicsFor,m
 
 export function archiveLicense(metadata) {
   for(const value of [metadata.licenseurl].flat().filter(Boolean)) {
-    try {const u=new URL(value);if(u.hostname!=="creativecommons.org")continue;
+    try {
+      const u=new URL(value);
+      if(u.hostname!=="creativecommons.org")continue;
       if(/^\/publicdomain\/(?:mark|zero)\/1\.0\/?$/.test(u.pathname))return {rights:u.pathname.includes('zero')?"CC0 déclaré par la source":"Domaine public déclaré par la source",rightsUrl:u.href};
     }catch{}
   }
+  const rights=clean(metadata.rights||metadata.license||"");
+  if(/public domain|domaine public|cc0/i.test(rights))return {rights:rights||"Domaine public déclaré par la source"};
   return null;
 }
+
 export function normalizeArchive(payload,now=new Date(),approvedIdentifiers=config.archiveApprovedIdentifiers||[]) {
   const m=payload.metadata||{},id=m.identifier;
   if(!/^[\w.-]{2,160}$/.test(id||""))return null;
-  if(!approvedIdentifiers.includes(id))return null;
+  const manuallyApproved=approvedIdentifiers.includes(id);
+  if(!manuallyApproved&&!config.archiveAutoDiscovery)return null;
   if(![m.collection].flat().some(c=>config.archiveCollections.includes(c)))return null;
   const licence=archiveLicense(m);if(!licence)return null;
   const evidence=frenchEvidence({language:asText(m.language),title:asText(m.title)});if(!evidence)return null;
@@ -27,24 +33,48 @@ export function normalizeArchive(payload,now=new Date(),approvedIdentifiers=conf
     description:clean(m.description).slice(0,420),thumbnail:`https://archive.org/services/img/${encodeURIComponent(id)}`,
     publishedAt:m.publicdate||m.addeddate||null,releaseYear:year?Number(year):null,durationSeconds:file.duration,status:"replay",
     language:"fr",languageLabel:evidence.languageLabel,languageEvidence:evidence.evidence,topics:topicsFor(`${asText(m.subject)} ${asText(m.title)}`),
-    score:65,embeddable:true,...licence,sourceUrl:`https://archive.org/details/${id}`,lastCheckedAt:now.toISOString(),verification:"publisher-metadata",
+    score:manuallyApproved?78:68,embeddable:true,...licence,sourceUrl:`https://archive.org/details/${id}`,lastCheckedAt:now.toISOString(),verification:manuallyApproved?"manual+publisher-metadata":"publisher-metadata",
     playbackSources:[{source:type,playbackUrl:direct,embeddable:true,label:"Internet Archive · vidéo directe"},{source:"archive",identifier:id,embeddable:true,label:"Internet Archive · lecteur"}]
   };
 }
+
+async function discoverArchiveIdentifiers(fetchImpl) {
+  const rows=Math.max(50,Math.min(500,Number(config.archiveSearchRows)||250));
+  const pages=Math.max(1,Math.min(20,Number(config.archiveSearchPages)||8));
+  const ids=new Set(config.archiveApprovedIdentifiers||[]);
+  if(!config.archiveAutoDiscovery)return [...ids];
+  const collectionQuery=config.archiveCollections.map(c=>`collection:${c}`).join(" OR ");
+  const queries=[
+    `(${collectionQuery}) AND mediatype:movies AND (language:fre OR language:fra OR language:french OR language:fr)`,
+    `(${collectionQuery}) AND mediatype:movies AND title:(VF OR français OR francais OR "film complet")`
+  ];
+  for(const q of queries) {
+    for(let page=1;page<=pages;page++) {
+      const u=new URL("https://archive.org/advancedsearch.php");
+      for(const [k,v] of Object.entries({q,fl:"identifier,title,language,licenseurl,rights,collection",rows:String(rows),page:String(page),output:"json"}))u.searchParams.set(k,v);
+      const data=await request(u,{json:true,fetchImpl,timeout:30000});
+      const docs=data?.response?.docs||[];
+      for(const doc of docs)if(doc.identifier)ids.add(doc.identifier);
+      if(docs.length<rows)break;
+    }
+  }
+  return [...ids];
+}
+
 export async function discoverFrenchArchive({existing=[],fetchImpl=fetch,now=new Date()}={}) {
-  const docs=[],videos=[],seen=new Set(),removed=[];let failed=0;
-  if(!config.archiveApprovedIdentifiers?.length)return {videos:[],removed:existing.filter(v=>v.source==="archive").map(v=>v.id),reports:[{id:"archive",provider:"archive",name:"Internet Archive",status:"needs-review",count:0,note:"Aucun film dont la piste française et les conditions de diffusion ont été validées manuellement."}]};
-  try {
-    docs.push(...config.archiveApprovedIdentifiers.map(identifier=>({identifier})));
-    const previous=new Map(existing.filter(v=>v.source==="archive").map(v=>[v.id,v]));
-    await mapLimit(docs,3,async doc=>{
-      const id=`archive:${doc.identifier}`;seen.add(id);
-      try{
-        const data=await request(`https://archive.org/metadata/${encodeURIComponent(doc.identifier)}`,{json:true,fetchImpl});
-        const v=normalizeArchive(data,now);if(v)videos.push(v);else removed.push(id);
-      }catch(error){failed++;if([404,410].includes(error.status))removed.push(id);else if(previous.has(id))videos.push({...previous.get(id),stale:true});}
-    });
-  }catch{failed++;}
-  for(const old of existing.filter(v=>v.source==="archive"&&!seen.has(v.id)))videos.push({...old,stale:true});
-  return {videos,removed,reports:[{id:"archive",provider:"archive",name:"Internet Archive",status:failed?(videos.length?"partial":"unavailable"):"ok",count:videos.length,discovered:docs.length,...(!failed?{lastSuccessAt:now.toISOString()}:{})}]};
+  const videos=[],seen=new Set(),removed=[];let failed=0,discovered=0;
+  const previous=new Map(existing.filter(v=>v.source==="archive").map(v=>[v.id,v]));
+  let identifiers=[];
+  try {identifiers=await discoverArchiveIdentifiers(fetchImpl);discovered=identifiers.length;}catch{failed++;identifiers=[...(config.archiveApprovedIdentifiers||[])];}
+  await mapLimit(identifiers,4,async identifier=>{
+    const id=`archive:${identifier}`;seen.add(id);
+    const old=previous.get(id);
+    if(old?.lastCheckedAt&&now-new Date(old.lastCheckedAt)<86400000&&!process.env.RECHECK_ALL){videos.push(old);return;}
+    try{
+      const data=await request(`https://archive.org/metadata/${encodeURIComponent(identifier)}`,{json:true,fetchImpl,timeout:25000});
+      const v=normalizeArchive(data,now);if(v)videos.push(v);else removed.push(id);
+    }catch(error){failed++;if([404,410].includes(error.status))removed.push(id);else if(old)videos.push({...old,stale:true});}
+  });
+  for(const old of previous.values())if(!seen.has(old.id))videos.push({...old,stale:true});
+  return {videos,removed,reports:[{id:"archive",provider:"archive",name:"Internet Archive",status:failed?(videos.length?"partial":"unavailable"):"ok",count:videos.length,discovered,method:config.archiveAutoDiscovery?"advancedsearch+metadata":"manual-list",...(!failed?{lastSuccessAt:now.toISOString()}:{})}]};
 }
