@@ -9,6 +9,8 @@ const esc = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({'&':'&
 const episodeNumber = (video) => Number(video.episodeNumber) || Number(String(video.title || '').match(/(?:épisode|episode|ep\.?|e)\s*(\d{1,3})/i)?.[1]) || 0;
 const seasonNumber = (video) => Number(video.seasonNumber) || Number(String(video.title || '').match(/(?:saison|season|s)\s*(\d{1,2})/i)?.[1]) || 1;
 const seriesName = (video) => video.seriesTitle || String(video.title || '').replace(/(?:[-–—|:]?\s*(?:saison|season|s)\s*\d{1,2})?.*?(?:épisode|episode|ep\.?|e)\s*\d{1,3}.*$/i, '').trim() || 'Série';
+const ignoredGenres = new Set(['Série', 'Français']);
+const genreList = (video) => [...new Set((video.topics || []).filter((genre) => genre && !ignoredGenres.has(genre)))];
 
 app.innerHTML = `
   <div class="series-shell">
@@ -34,10 +36,18 @@ app.innerHTML = `
     </section>
 
     <section class="series-toolbar">
-      <label>
-        <span class="sr-only">Rechercher une série</span>
-        <input id="series-search" type="search" placeholder="Rechercher une série ou un épisode…" autocomplete="off" />
-      </label>
+      <div class="series-filters">
+        <label class="series-search-wrap">
+          <span class="sr-only">Rechercher une série</span>
+          <input id="series-search" type="search" placeholder="Rechercher une série ou un épisode…" autocomplete="off" />
+        </label>
+        <label class="genre-filter-wrap">
+          <span class="sr-only">Rechercher par genre</span>
+          <select id="series-genre" aria-label="Rechercher par genre">
+            <option value="">Tous les genres</option>
+          </select>
+        </label>
+      </div>
       <div class="series-stats"><strong id="series-count">0</strong> séries · <strong id="episode-count">0</strong> épisodes</div>
     </section>
 
@@ -48,6 +58,7 @@ app.innerHTML = `
 
 const list = document.querySelector('#series-list');
 const search = document.querySelector('#series-search');
+const genreSelect = document.querySelector('#series-genre');
 const playerWrap = document.querySelector('.series-player-wrap');
 const player = document.querySelector('#series-player');
 const nowTitle = document.querySelector('#series-now-title');
@@ -71,15 +82,25 @@ function groupEpisodes(rows) {
   return [...groups.values()].sort((a,b) => a.title.localeCompare(b.title, 'fr'));
 }
 
+function populateGenres() {
+  const genres = [...new Set(episodes.flatMap(genreList))].sort((a,b) => a.localeCompare(b, 'fr'));
+  genreSelect.innerHTML = `<option value="">Tous les genres</option>${genres.map((genre) => `<option value="${esc(genre)}">${esc(genre)}</option>`).join('')}`;
+}
+
 function render() {
   const q = search.value.trim().toLocaleLowerCase('fr');
-  const filtered = q ? episodes.filter((video) => `${seriesName(video)} ${video.title} ${video.description || ''}`.toLocaleLowerCase('fr').includes(q)) : episodes;
+  const selectedGenre = genreSelect.value;
+  const filtered = episodes.filter((video) => {
+    const matchesText = !q || `${seriesName(video)} ${video.title} ${video.description || ''}`.toLocaleLowerCase('fr').includes(q);
+    const matchesGenre = !selectedGenre || genreList(video).includes(selectedGenre);
+    return matchesText && matchesGenre;
+  });
   const groups = groupEpisodes(filtered);
   document.querySelector('#series-count').textContent = String(groups.length);
   document.querySelector('#episode-count').textContent = String(filtered.length);
 
   if (!groups.length) {
-    list.innerHTML = `<div class="empty"><h2>Aucune série trouvée</h2><p>Essaie une autre recherche ou actualise le catalogue.</p></div>`;
+    list.innerHTML = `<div class="empty"><h2>Aucune série trouvée</h2><p>Essaie un autre titre ou un autre genre.</p></div>`;
     return;
   }
 
@@ -98,7 +119,7 @@ function render() {
           <div class="episode-list">
             ${rows.map((video, pos) => `<button class="episode-row" type="button" data-play-id="${esc(video.id)}">
               <span class="episode-number">${episodeNumber(video) || pos + 1}</span>
-              <span class="episode-copy"><strong>${esc(video.title)}</strong><small>${formatDuration(video.durationSeconds)} · ${esc(video.channel || '')}</small></span>
+              <span class="episode-copy"><strong>${esc(video.title)}</strong><small>${formatDuration(video.durationSeconds)} · ${esc(video.channel || '')}${genreList(video).length ? ` · ${esc(genreList(video).join(' · '))}` : ''}</small></span>
               <span class="episode-play">▶</span>
             </button>`).join('')}
           </div>
@@ -131,6 +152,7 @@ list.addEventListener('click', (event) => {
   if (play) playEpisode(play.dataset.playId);
 });
 search.addEventListener('input', render);
+genreSelect.addEventListener('change', render);
 
 async function load() {
   try {
@@ -138,6 +160,7 @@ async function load() {
     if (!response.ok) throw new Error('Catalogue indisponible');
     const payload = await response.json();
     episodes = (payload.videos || []).filter((video) => video.language === 'fr' && video.contentType === 'episode' && video.durationSeconds >= 480 && isPlayableMovie(video));
+    populateGenres();
     render();
   } catch {
     list.innerHTML = `<div class="empty"><h2>Catalogue séries indisponible</h2><p>La prochaine collecte réessaiera automatiquement.</p></div>`;
