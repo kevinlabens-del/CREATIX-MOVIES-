@@ -2,55 +2,18 @@
   "region": "FR",
   "minimumDurationSeconds": 2400,
   "youtubeChannels": [
-    {
-      "handle": "BoxOfficeFilmsCompletsFR",
-      "name": "Boxoffice · Films complets",
-      "id": "UCQltP9CZKGug5kTf6cppVgg"
-    },
-    {
-      "handle": "CinemaCinemas",
-      "name": "Cinéma Cinémas",
-      "id": "UCQIrvVPHrt2cN14ktGA2Snw"
-    },
-    {
-      "handle": "imineo",
-      "name": "imineo",
-      "id": "UC_majyzBb8HZV0wCmU4Z4Ag"
-    },
-    {
-      "handle": "BoxOfficeGrenier",
-      "name": "Boxoffice · Films TV",
-      "id": "UCyclbiz4hz9ZR5hQsJC__9A"
-    },
-    {
-      "handle": "BoxOfficeFAMILLE",
-      "name": "Boxoffice · Famille",
-      "id": "UC1GJOmIrsa-OmUt2yYHfAKQ"
-    },
-    {
-      "handle": "BoxOffice4K",
-      "name": "Boxoffice · 4K",
-      "id": "UCSE5n4XCVfHmerDydpRymjA"
-    },
-    {
-      "handle": "imineoDocumentaires",
-      "name": "imineo · Documentaires",
-      "documentaries": true,
-      "id": "UCJ9tHJbCa8ZoMbapfJLy0ZQ"
-    }
+    {"handle":"BoxOfficeFilmsCompletsFR","name":"Boxoffice · Films complets","id":"UCQltP9CZKGug5kTf6cppVgg"},
+    {"handle":"CinemaCinemas","name":"Cinéma Cinémas","id":"UCQIrvVPHrt2cN14ktGA2Snw"},
+    {"handle":"imineo","name":"imineo","id":"UC_majyzBb8HZV0wCmU4Z4Ag"},
+    {"handle":"BoxOfficeGrenier","name":"Boxoffice · Films TV","id":"UCyclbiz4hz9ZR5hQsJC__9A"},
+    {"handle":"BoxOfficeFAMILLE","name":"Boxoffice · Famille","id":"UC1GJOmIrsa-OmUt2yYHfAKQ"},
+    {"handle":"BoxOffice4K","name":"Boxoffice · 4K","id":"UCSE5n4XCVfHmerDydpRymjA"},
+    {"handle":"imineoDocumentaires","name":"imineo · Documentaires","documentaries":true,"id":"UCJ9tHJbCa8ZoMbapfJLy0ZQ"}
   ],
   "dailymotionOwners": [
-    {
-      "id": "imineo",
-      "name": "imineo",
-      "documentaries": true
-    }
+    {"id":"imineo","name":"imineo","documentaries":true}
   ],
-  "archiveCollections": [
-    "feature_films",
-    "prelinger",
-    "opensource_movies"
-  ],
+  "archiveCollections": ["feature_films","prelinger","opensource_movies"],
   "archiveAutoDiscovery": true,
   "archiveSearchRows": 250,
   "archiveSearchPages": 8,
@@ -59,10 +22,13 @@
   "wikimedia": true,
   "wikimediaCategories": [
     "French-language films",
-    "Films in French",
-    "French-language documentary films"
+    "Videos of films in French",
+    "French-language documentary films",
+    "French-language animated films"
   ],
   "wikimediaPagesPerCategory": 40,
+  "wikimediaCategoryDepth": 2,
+  "wikimediaMaxCategories": 160,
   "gallica": true,
   "gallicaSearchPages": 30,
   "europeana": true,
