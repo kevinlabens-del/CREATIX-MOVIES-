@@ -7,13 +7,15 @@ import {discoverFrenchDailymotion} from './dailymotion-french.mjs';
 import {discoverFrenchOnf} from './onf-french.mjs';
 import {discoverFrenchArchive as discoverArchiveCatalog} from './archive-french.mjs';
 import {discoverFrenchCommons} from './wikimedia-french.mjs';
+import {discoverCustomJsonFeeds} from './custom-json-feeds.mjs';
 
 const root=new URL('../',import.meta.url);
 async function readJson(path,fallback){try{return JSON.parse(await readFile(new URL(path,root),'utf8'));}catch{return fallback;}}
 const previous=await readJson('public/data/catalog.json',await readJson('public/data/seed-catalog.json',{videos:[]}));
 const sourceState=await readJson('data/source-catalog.json',previous);
 const now=new Date();
-const jobs=[['youtube',discoverFrenchYouTube],['dailymotion',discoverFrenchDailymotion],...(config.onf?[['onf',discoverFrenchOnf]]:[]),['archive',discoverArchiveCatalog],...(config.wikimedia?[['wikimedia',discoverFrenchCommons]]:[])];
+const hasCustomFeeds=Array.isArray(config.customJsonFeeds)&&config.customJsonFeeds.some(source=>source?.enabled!==false);
+const jobs=[['youtube',discoverFrenchYouTube],['dailymotion',discoverFrenchDailymotion],...(config.onf?[['onf',discoverFrenchOnf]]:[]),['archive',discoverArchiveCatalog],...(config.wikimedia?[['wikimedia',discoverFrenchCommons]]:[]),...(hasCustomFeeds?[['custom',discoverCustomJsonFeeds]]:[])];
 const results=await Promise.allSettled(jobs.map(async([name,run])=>{
   // CACHE_ONLY is an explicit packaging step after real collection, never the scheduled default.
   let result;
@@ -42,7 +44,7 @@ const approvedMovies=movies.filter(v=>v.source!=="archive"||config.archiveApprov
 const videos=mergeMovies(approvedMovies.filter(v=>!removed.has(v.id)&&v.playbackSources.length)).sort((a,b)=>(b.score||0)-(a.score||0)||String(b.publishedAt||'').localeCompare(String(a.publishedAt||'')));
 if(!videos.length)throw new Error('Aucun film français conservé : le dernier catalogue reste inchangé.');
 const active=reports.filter(r=>r.count>0).length;
-const payload={version:6,appVersion:'1.3.0',mode:'french-multisource',generatedAt:reports.some(r=>r.lastSuccessAt)?now.toISOString():(previous.generatedAt||null),lastAttemptAt:now.toISOString(),videos,sources:reports,
+const payload={version:7,appVersion:'1.3.0',mode:'french-multisource',generatedAt:reports.some(r=>r.lastSuccessAt)?now.toISOString():(previous.generatedAt||null),lastAttemptAt:now.toISOString(),videos,sources:reports,
   notice:`${videos.length} films complets en français · ${active} catalogues contributeurs.`,
   selection:{language:'fr',minimumDurationSeconds:config.minimumDurationSeconds,region:'FR',verification:'Les métadonnées des éditeurs indiquent un film complet, du français et une lecture intégrable. La disponibilité peut changer.'}};
 for(const path of ['public/data/catalog.json','data/catalog.json']) {
