@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const base = process.env.VITE_BASE_PATH || "./";
 
@@ -25,8 +26,6 @@ export default defineConfig({
     transformIndexHtml: {
       order: "post",
       handler(html) {
-        // Le manifeste public doit rester à la racine de l'app : ses chemins
-        // start_url, scope et icons sont relatifs à son emplacement.
         return html.replace(/(<link rel="manifest" href=")[^"]+("[^>]*>)/, '$1./manifest.webmanifest$2');
       },
     },
@@ -38,5 +37,11 @@ export default defineConfig({
   build: {
     target: "es2020",
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        movies: resolve(process.cwd(), "index.html"),
+        series: resolve(process.cwd(), "series.html"),
+      },
+    },
   },
 });
