@@ -8,8 +8,6 @@ export function archiveLicense(metadata) {
       if(/^\/publicdomain\/(?:mark|zero)\/1\.0\/?$/.test(u.pathname))return {rights:u.pathname.includes('zero')?"CC0 déclaré par la source":"Domaine public déclaré par la source",rightsUrl:u.href};
     }catch{}
   }
-  const rights=clean(metadata.rights||metadata.license||"");
-  if(/public domain|domaine public|cc0/i.test(rights))return {rights:rights||"Domaine public déclaré par la source"};
   return null;
 }
 
