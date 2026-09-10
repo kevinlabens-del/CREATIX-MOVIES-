@@ -63,5 +63,8 @@
     "French-language documentary films"
   ],
   "wikimediaPagesPerCategory": 40,
+  "gallica": true,
+  "gallicaSearchPages": 30,
+  "europeana": true,
   "customJsonFeeds": []
 }
