@@ -1,28 +1,8 @@
-const KEY = 'creatix-movies:manual-videos:v1';
-const originalFetch = window.fetch.bind(window);
-
-function readManual() {
-  try {
-    const rows = JSON.parse(localStorage.getItem(KEY) || '[]');
-    return Array.isArray(rows) ? rows : [];
-  } catch { return []; }
-}
-
-window.fetch = async (input, init) => {
-  const response = await originalFetch(input, init);
-  try {
-    const url = typeof input === 'string' ? input : input?.url || '';
-    if (!/\/data\/catalog\.json(?:[?#]|$)/.test(url)) return response;
-    const payload = await response.clone().json();
-    const manual = readManual();
-    if (!manual.length) return response;
-    const existing = new Set((payload.videos || []).map(v => v.id));
-    payload.videos = [...(payload.videos || []), ...manual.filter(v => !existing.has(v.id))];
-    payload.notice = `${payload.notice || ''} · ${manual.length} ajout${manual.length > 1 ? 's' : ''} manuel${manual.length > 1 ? 's' : ''}`.trim();
-    return new Response(JSON.stringify(payload), {
-      status: response.status,
-      statusText: response.statusText,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' }
-    });
-  } catch { return response; }
-};
+const VIDEO_KEY='creatix-movies:manual-videos:v1';
+const SOURCE_KEY='creatix-movies:catalog-sources:v1';
+const originalFetch=window.fetch.bind(window);
+function read(key){try{const rows=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(rows)?rows:[]}catch{return[]}}
+function extract(payload){if(Array.isArray(payload))return payload;if(Array.isArray(payload?.videos))return payload.videos;if(Array.isArray(payload?.items))return payload.items;if(Array.isArray(payload?.catalog))return payload.catalog;return[]}
+function normalize(item,source,index){if(!item||typeof item!=='object')return null;const v={...item};v.id=String(v.id||`${source.id}:${index}:${v.title||'contenu'}`);v.source=v.source||'manual-catalog';v.channel=v.channel||source.name;v.language=v.language||'fr';v.status=v.status||'replay';if(!v.contentType&&source.type!=='mixed')v.contentType=source.type;if(!v.contentType)v.contentType=v.seriesTitle||v.episodeNumber?'episode':'film';if(!Array.isArray(v.topics))v.topics=v.genre?[v.genre]:[];return v}
+async function loadExternal(source){if(source.enabled===false)return[];try{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);let response;try{response=await originalFetch(source.url,{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timer)}if(!response.ok)return[];return extract(await response.json()).map((v,i)=>normalize(v,source,i)).filter(Boolean)}catch{return[]}}
+window.fetch=async(input,init)=>{const response=await originalFetch(input,init);try{const url=typeof input==='string'?input:input?.url||'';if(!/\/data\/catalog\.json(?:[?#]|$)/.test(url))return response;const payload=await response.clone().json();const manual=read(VIDEO_KEY),sources=read(SOURCE_KEY),external=(await Promise.all(sources.map(loadExternal))).flat(),all=[...(payload.videos||[]),...external,...manual];payload.videos=[...new Map(all.map(v=>[v.id||`${v.title}:${v.sourceUrl||''}`,v])).values()];const added=external.length+manual.length;if(added)payload.notice=`${payload.notice||''} · ${added} contenu${added>1?'s':''} ajouté${added>1?'s':''} depuis tes sources`.trim();return new Response(JSON.stringify(payload),{status:response.status,statusText:response.statusText,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}})}catch{return response}};
