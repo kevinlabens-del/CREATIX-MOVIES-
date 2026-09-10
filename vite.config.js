@@ -41,6 +41,7 @@ export default defineConfig({
       input: {
         movies: resolve(process.cwd(), "index.html"),
         series: resolve(process.cwd(), "series.html"),
+        settings: resolve(process.cwd(), "settings.html"),
       },
     },
   },
