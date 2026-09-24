@@ -23,6 +23,7 @@ app.innerHTML = `
       <nav class="mode-switch" aria-label="Choisir le catalogue">
         <a href="${movieUrl}">🎬 Films</a>
         <a class="active" href="./series.html" aria-current="page">📺 Séries</a>
+        <button id="share-series-app" type="button" aria-label="Partager CR3@TIX MOVIES" title="Partager l’application">↗ Partager</button>
       </nav>
     </header>
 
@@ -63,7 +64,61 @@ const playerWrap = document.querySelector('.series-player-wrap');
 const player = document.querySelector('#series-player');
 const nowTitle = document.querySelector('#series-now-title');
 const nowMeta = document.querySelector('#series-now-meta');
+const shareButton = document.querySelector('#share-series-app');
+let shareResetTimer = null;
 let episodes = [];
+
+/* CR3ATIX_SHARE_V1 — partage uniquement l’URL publique de l’application, jamais l’épisode en cours. */
+async function shareApplication() {
+  const url = 'https://kevinlabens-del.github.io/CREATIX-MOVIES-/';
+  const markCopied = () => {
+    if (!shareButton) return;
+    const original = '↗ Partager';
+    shareButton.textContent = '✓ Lien copié';
+    if (shareResetTimer) window.clearTimeout(shareResetTimer);
+    shareResetTimer = window.setTimeout(() => {
+      shareButton.textContent = original;
+      shareResetTimer = null;
+    }, 2400);
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'CR3@TIX MOVIES',
+        text: 'Découvre CR3@TIX MOVIES, un catalogue de films et séries avec lecteur intégré.',
+        url,
+      });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+    }
+  }
+
+  try {
+    if (window.isSecureContext && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      markCopied();
+      return;
+    }
+  } catch {}
+
+  const field = document.createElement('textarea');
+  field.value = url;
+  field.readOnly = true;
+  field.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(field);
+  field.select();
+  field.setSelectionRange(0, field.value.length);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch {}
+  field.remove();
+
+  if (copied) markCopied();
+  else window.prompt('Copie ce lien pour partager CR3@TIX MOVIES :', url);
+}
+
+shareButton?.addEventListener('click', () => void shareApplication());
 
 function groupEpisodes(rows) {
   const groups = new Map();
