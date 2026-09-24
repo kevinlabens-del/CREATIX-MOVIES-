@@ -68,6 +68,10 @@ document.querySelector("#app").innerHTML = `
         <button id="install-app" class="action-button install-button" type="button" hidden>
           <span aria-hidden="true">＋</span> Installer
         </button>
+        <button id="share-app" class="action-button" type="button" aria-label="Partager CR3@TIX MOVIES" title="Partager l’application">
+          <span aria-hidden="true">↗</span>
+          <span>Partager</span>
+        </button>
         <button id="refresh-catalog" class="action-button" type="button">
           <span class="refresh-icon" aria-hidden="true">↻</span>
           <span>Actualiser</span>
@@ -795,6 +799,44 @@ document.addEventListener("click", (event) => {
 elements.favoriteSelected.addEventListener("click", () => {
   if (state.selectedId) toggleFavorite(state.selectedId);
 });
+
+/* CR3ATIX_SHARE_V1 — partage l'application, jamais le film sélectionné ni l'état local. */
+const shareApplication = async () => {
+  const url = "https://kevinlabens-del.github.io/CREATIX-MOVIES-/";
+  const data = {
+    title: "CR3@TIX MOVIES",
+    text: "Découvre CR3@TIX MOVIES, un catalogue de films et documentaires avec lecteur intégré.",
+    url,
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(data);
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  try {
+    if (window.isSecureContext && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      showToast("Lien de CR3@TIX MOVIES copié.");
+      return;
+    }
+  } catch {}
+  const field = document.createElement("textarea");
+  field.value = url;
+  field.readOnly = true;
+  field.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
+  document.body.append(field);
+  field.select();
+  field.setSelectionRange(0, field.value.length);
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch {}
+  field.remove();
+  if (copied) showToast("Lien de CR3@TIX MOVIES copié.");
+  else window.prompt("Copie ce lien pour partager CR3@TIX MOVIES :", url);
+};
+document.querySelector("#share-app")?.addEventListener("click", shareApplication);
 
 elements.refresh.addEventListener("click", () => loadCatalog(true));
 elements.loadMore.addEventListener("click", () => { state.visibleLimit += 48; renderCatalog(); });
